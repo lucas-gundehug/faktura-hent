@@ -3,8 +3,8 @@
   <Entities />
   <Roles />
   <Workflows>
-    <Workflow WorkflowId="{d3c10c43-c4de-5b70-8360-0735390b41e1}" Name="Gem nye fakturaer fra Outlook">
-      <JsonFileName>/Workflows/SaveInvoicePDFs-D3C10C43-C4DE-5B70-8360-0735390B41E1.json</JsonFileName>
+    <Workflow WorkflowId="{a1cec6e2-e3b6-559c-94ae-95a663528a9c}" Name="Gem fakturaer fra faktura@alcora.dk">
+      <JsonFileName>/Workflows/SaveInvoicePDFs-A1CEC6E2-E3B6-559C-94AE-95A663528A9C.json</JsonFileName>
       <Type>1</Type>
       <Subprocess>0</Subprocess>
       <Category>5</Category>
@@ -25,7 +25,7 @@
       <IsCustomProcessingStepAllowedForOtherPublishers>1</IsCustomProcessingStepAllowedForOtherPublishers>
       <PrimaryEntity>none</PrimaryEntity>
       <LocalizedNames>
-        <LocalizedName languagecode="1033" description="Gem nye fakturaer fra Outlook" />
+        <LocalizedName languagecode="1033" description="Gem fakturaer fra faktura@alcora.dk" />
       </LocalizedNames>
     </Workflow>
   </Workflows>
@@ -42,15 +42,15 @@
     <Language>1033</Language>
   </Languages>
   <connectionreferences>
-    <connectionreference connectionreferencelogicalname="lgi_invoice_outlook">
-      <connectionreferencedisplayname>Invoice automation - Outlook</connectionreferencedisplayname>
+    <connectionreference connectionreferencelogicalname="fkh_faktura_outlook">
+      <connectionreferencedisplayname>Faktura-hent - Outlook</connectionreferencedisplayname>
       <connectorid>/providers/Microsoft.PowerApps/apis/shared_office365</connectorid>
       <iscustomizable>1</iscustomizable>
       <statecode>0</statecode>
       <statuscode>1</statuscode>
     </connectionreference>
-    <connectionreference connectionreferencelogicalname="lgi_invoice_onedrive">
-      <connectionreferencedisplayname>Invoice automation - OneDrive</connectionreferencedisplayname>
+    <connectionreference connectionreferencelogicalname="fkh_faktura_onedrive">
+      <connectionreferencedisplayname>Faktura-hent - OneDrive</connectionreferencedisplayname>
       <connectorid>/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness</connectorid>
       <iscustomizable>1</iscustomizable>
       <statecode>0</statecode>

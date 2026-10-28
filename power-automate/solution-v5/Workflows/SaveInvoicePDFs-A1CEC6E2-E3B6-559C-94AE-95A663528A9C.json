@@ -1319,7 +1319,7 @@
       "shared_office365": {
         "runtimeSource": "embedded",
         "connection": {
-          "connectionReferenceLogicalName": "lgi_invoice_outlook"
+          "connectionReferenceLogicalName": "fkh_faktura_outlook"
         },
         "api": {
           "name": "shared_office365"
@@ -1328,7 +1328,7 @@
       "shared_onedriveforbusiness": {
         "runtimeSource": "embedded",
         "connection": {
-          "connectionReferenceLogicalName": "lgi_invoice_onedrive"
+          "connectionReferenceLogicalName": "fkh_faktura_onedrive"
         },
         "api": {
           "name": "shared_onedriveforbusiness"

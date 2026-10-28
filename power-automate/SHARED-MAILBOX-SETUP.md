@@ -1,6 +1,6 @@
 # v5: delt postkasse, datomapper og dubletter
 
-Importfil: **Gem-nye-fakturaer-solution-v5.zip**, version **1.0.0.5**.
+Importfil: **Gem-nye-fakturaer-solution-v5.zip**, version **1.0.0.6**.
 
 Flowet tjekker `faktura@alcora.dk` hvert 15. minut. Det læser både Indbakke
 og mappen med det præcise navn `Arkiv_10_2024_>`. Arkivmappen kan ligge direkte
@@ -44,11 +44,12 @@ De eksisterende Royal Unibrew-, inco-, Kreditnota_- og nummererede
    postkasse; det er ikke tilstrækkeligt kun at kunne sende som den.
 4. Hvis importen tilbyder at aktivere flows automatisk, lad det være slået fra,
    indtil indstillingerne er gennemgået.
-5. Åbn **Invoice PDF automation > Gem nye fakturaer fra Outlook**. Kontroller
+5. Åbn **Faktura-hent (shared mailbox) > Gem fakturaer fra faktura@alcora.dk**. Kontroller
    forbindelserne og trinnene **Shared mailbox**, **Archive folder name** og
    **OneDrive folder**. Arkivnavnet slutter bogstaveligt med `_>` i pakken.
-6. Gem flowet, ret eventuelle valideringsfejl, og slå det til. Det erstatter det
-   tidligere flow med samme ID; aktiver kun én udgave mod denne destination.
+6. Gem flowet, ret eventuelle valideringsfejl, og slå det til. Det er en selvstændig
+   solution og ændrer ikke den ældre **Invoice PDF automation**. Slå et ældre
+   fakturaflow fra, hvis det gemmer de samme fakturaer, så de ikke gemmes to gange.
 7. Lad den første planlagte kørsel afslutte, eller vælg **Test > Manually** for at
    køre initialiseringen. Kontroller i kørselsoversigten, at hele kørslen lykkes,
    og at `/Fakturaer/_automation-state.json` er oprettet. Denne fil fastlægger

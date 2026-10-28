@@ -1,27 +1,27 @@
 <?xml version='1.0' encoding='utf-8'?>
 <ImportExportXml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="9.1.0.643" SolutionPackageVersion="9.1" languagecode="1033" generatedBy="CrmLive">
   <SolutionManifest>
-    <UniqueName>InvoiceAutomation</UniqueName>
+    <UniqueName>FakturaHentSharedMailbox</UniqueName>
     <LocalizedNames>
-      <LocalizedName description="Invoice PDF automation" languagecode="1033" />
+      <LocalizedName description="Faktura-hent (shared mailbox)" languagecode="1033" />
     </LocalizedNames>
     <Descriptions>
       <Description description="Future shared-mailbox invoice PDFs in Copenhagen date folders, with exact content deduplication." languagecode="1033" />
     </Descriptions>
-    <Version>1.0.0.5</Version>
+    <Version>1.0.0.6</Version>
     <Managed>0</Managed>
     <Publisher>
-      <UniqueName>LucasInvoiceAutomation</UniqueName>
+      <UniqueName>FakturaHent</UniqueName>
       <LocalizedNames>
-        <LocalizedName description="LucasInvoiceAutomation" languagecode="1033" />
+        <LocalizedName description="Faktura-hent" languagecode="1033" />
       </LocalizedNames>
       <Descriptions>
-        <Description description="LucasInvoiceAutomation" languagecode="1033" />
+        <Description description="Faktura-hent" languagecode="1033" />
       </Descriptions>
       <EMailAddress xsi:nil="true" />
       <SupportingWebsiteUrl xsi:nil="true" />
-      <CustomizationPrefix>lgi</CustomizationPrefix>
-      <CustomizationOptionValuePrefix>78621</CustomizationOptionValuePrefix>
+      <CustomizationPrefix>fkh</CustomizationPrefix>
+      <CustomizationOptionValuePrefix>43817</CustomizationOptionValuePrefix>
       <Addresses>
         <Address>
           <AddressNumber>1</AddressNumber>
@@ -82,7 +82,7 @@
       </Addresses>
     </Publisher>
     <RootComponents>
-      <RootComponent type="29" id="{d3c10c43-c4de-5b70-8360-0735390b41e1}" behavior="0" />
+      <RootComponent type="29" id="{a1cec6e2-e3b6-559c-94ae-95a663528a9c}" behavior="0" />
     </RootComponents>
     <MissingDependencies />
   </SolutionManifest>

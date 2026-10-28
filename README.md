@@ -42,7 +42,7 @@ faktura@alcora.dk, and OneDrive for Business.
    **Import solution**, and choose the downloaded ZIP.
 3. When asked for connections, pick (or sign in to create) your **Office 365 Outlook**
    and **OneDrive for Business** connections. Leave the flow switched off for now.
-4. Open **Invoice PDF automation** → **Gem nye fakturaer fra Outlook**, check that
+4. Open **Faktura-hent (shared mailbox)** → **Gem fakturaer fra faktura@alcora.dk**, check that
    both connections show a green tick, then **Save** and **Turn on**.
 5. Click **Test → Manually** once. The run should succeed and create
    `Fakturaer/_automation-state.json`. Do not delete this file: it remembers which
@@ -51,6 +51,11 @@ faktura@alcora.dk, and OneDrive for Business.
    `inco TEST.pdf`. Within 15 minutes it should appear in today's folder in OneDrive.
 
 Only **one** person should have the flow switched on, otherwise PDFs are saved twice.
+Import it **once** per Power Automate environment. The copy belongs to whoever imported
+it, so if someone else imports the same release afterwards, they get a permission error
+("does not have WriteAccess … Forbindelsesreference"). Updates must then be imported
+by the owner. An older **Invoice PDF automation** solution is a separate, older flow
+and is not changed by this import.
 Files are saved in the OneDrive of whoever owns the OneDrive connection.
 
 Detailed guide (Danish): [power-automate/SHARED-MAILBOX-SETUP.md](power-automate/SHARED-MAILBOX-SETUP.md).
