@@ -1,0 +1,7 @@
+# Microsoft Power Platform CLI download (large, re-downloadable)
+power-automate/.tools/
+__pycache__/
+*.pyc
+power-automate/InvoiceAutomation/bin/
+power-automate/InvoiceAutomation/obj/
+.env*

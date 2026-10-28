@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Workflow WorkflowId="{d3c10c43-c4de-5b70-8360-0735390b41e1}" Name="Gem nye fakturaer fra Outlook">
+  <JsonFileName>/Workflows/SaveInvoicePDFs-D3C10C43-C4DE-5B70-8360-0735390B41E1.json</JsonFileName>
+  <Type>1</Type>
+  <Subprocess>0</Subprocess>
+  <Category>5</Category>
+  <Mode>0</Mode>
+  <Scope>4</Scope>
+  <OnDemand>0</OnDemand>
+  <TriggerOnCreate>0</TriggerOnCreate>
+  <TriggerOnDelete>0</TriggerOnDelete>
+  <AsyncAutoDelete>0</AsyncAutoDelete>
+  <SyncWorkflowLogOnFailure>0</SyncWorkflowLogOnFailure>
+  <StateCode>0</StateCode>
+  <StatusCode>1</StatusCode>
+  <RunAs>1</RunAs>
+  <IsTransacted>1</IsTransacted>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsCustomizable>1</IsCustomizable>
+  <BusinessProcessType>0</BusinessProcessType>
+  <IsCustomProcessingStepAllowedForOtherPublishers>1</IsCustomProcessingStepAllowedForOtherPublishers>
+  <PrimaryEntity>none</PrimaryEntity>
+  <LocalizedNames>
+    <LocalizedName languagecode="1033" description="Gem nye fakturaer fra Outlook" />
+  </LocalizedNames>
+</Workflow>

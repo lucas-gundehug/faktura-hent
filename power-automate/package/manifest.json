@@ -1,0 +1,79 @@
+{
+  "schema": "1.0",
+  "details": {
+    "displayName": "Gem nye fakturaer fra Outlook",
+    "description": "New invoice PDF attachments to OneDrive for Business. Select both accounts at import.",
+    "createdTime": "2026-10-28T10:25:43.308163Z",
+    "packageTelemetryId": "58f80236-f1fc-5d8f-989d-c129d3f7a4e5",
+    "creator": "N/A",
+    "sourceEnvironment": ""
+  },
+  "resources": {
+    "d3c10c43-c4de-5b70-8360-0735390b41e1": {
+      "type": "Microsoft.Flow/flows",
+      "suggestedCreationType": "New",
+      "creationType": "Existing, New, Update",
+      "details": {
+        "displayName": "Gem nye fakturaer fra Outlook"
+      },
+      "configurableBy": "User",
+      "hierarchy": "Root",
+      "dependsOn": [
+        "367089fd-8ae8-52fb-86fe-22ec3b96aba5",
+        "f1a50012-b301-5247-95e1-9aa48fc2bc0a",
+        "8446ac2a-00a5-55c9-ae83-5809b75e22a4",
+        "392fd288-8f29-51a6-a783-42257381dd81"
+      ]
+    },
+    "367089fd-8ae8-52fb-86fe-22ec3b96aba5": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+      "name": "shared_office365",
+      "type": "Microsoft.PowerApps/apis",
+      "suggestedCreationType": "Existing",
+      "details": {
+        "displayName": "Office 365 Outlook"
+      },
+      "configurableBy": "System",
+      "hierarchy": "Child",
+      "dependsOn": []
+    },
+    "f1a50012-b301-5247-95e1-9aa48fc2bc0a": {
+      "type": "Microsoft.PowerApps/apis/connections",
+      "suggestedCreationType": "Existing",
+      "creationType": "Existing",
+      "details": {
+        "displayName": "Select your Office 365 Outlook account"
+      },
+      "configurableBy": "User",
+      "hierarchy": "Child",
+      "dependsOn": [
+        "367089fd-8ae8-52fb-86fe-22ec3b96aba5"
+      ]
+    },
+    "8446ac2a-00a5-55c9-ae83-5809b75e22a4": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+      "name": "shared_onedriveforbusiness",
+      "type": "Microsoft.PowerApps/apis",
+      "suggestedCreationType": "Existing",
+      "details": {
+        "displayName": "OneDrive for Business"
+      },
+      "configurableBy": "System",
+      "hierarchy": "Child",
+      "dependsOn": []
+    },
+    "392fd288-8f29-51a6-a783-42257381dd81": {
+      "type": "Microsoft.PowerApps/apis/connections",
+      "suggestedCreationType": "Existing",
+      "creationType": "Existing",
+      "details": {
+        "displayName": "Select your OneDrive for Business account"
+      },
+      "configurableBy": "User",
+      "hierarchy": "Child",
+      "dependsOn": [
+        "8446ac2a-00a5-55c9-ae83-5809b75e22a4"
+      ]
+    }
+  }
+}

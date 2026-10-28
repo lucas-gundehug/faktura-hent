@@ -1,0 +1,1340 @@
+{
+  "properties": {
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "Every_15_minutes": {
+          "type": "Recurrence",
+          "recurrence": {
+            "frequency": "Minute",
+            "interval": 15
+          },
+          "runtimeConfiguration": {
+            "concurrency": {
+              "runs": 1
+            }
+          }
+        }
+      },
+      "actions": {
+        "Shared_mailbox": {
+          "type": "Compose",
+          "inputs": "faktura@alcora.dk",
+          "runAfter": {}
+        },
+        "Archive_folder_name": {
+          "type": "Compose",
+          "inputs": "Arkiv_10_2024_>",
+          "runAfter": {
+            "Shared_mailbox": [
+              "Succeeded"
+            ]
+          }
+        },
+        "OneDrive_folder": {
+          "type": "Compose",
+          "inputs": "/Fakturaer",
+          "runAfter": {
+            "Archive_folder_name": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Mailbox_base": {
+          "type": "Compose",
+          "inputs": "@concat('https://graph.microsoft.com/v1.0/users/', encodeUriComponent(outputs('Shared_mailbox')), '/')",
+          "runAfter": {
+            "OneDrive_folder": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Initialize_Start_utc": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Start_utc",
+                "type": "string",
+                "value": "@utcNow()"
+              }
+            ]
+          },
+          "runAfter": {
+            "Mailbox_base": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Initialize_Processed_messages": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Processed_messages",
+                "type": "array",
+                "value": []
+              }
+            ]
+          },
+          "runAfter": {
+            "Initialize_Start_utc": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Initialize_State_file_ID": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "State_file_ID",
+                "type": "string",
+                "value": ""
+              }
+            ]
+          },
+          "runAfter": {
+            "Initialize_Processed_messages": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Initialize_Message_page_URL": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Message_page_URL",
+                "type": "string",
+                "value": ""
+              }
+            ]
+          },
+          "runAfter": {
+            "Initialize_State_file_ID": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Initialize_Attachment_page_URL": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Attachment_page_URL",
+                "type": "string",
+                "value": ""
+              }
+            ]
+          },
+          "runAfter": {
+            "Initialize_Message_page_URL": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Initialize_Existing_PDFs": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Existing_PDFs",
+                "type": "array",
+                "value": []
+              }
+            ]
+          },
+          "runAfter": {
+            "Initialize_Attachment_page_URL": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Initialize_Folders_to_scan": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Folders_to_scan",
+                "type": "array",
+                "value": []
+              }
+            ]
+          },
+          "runAfter": {
+            "Initialize_Existing_PDFs": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Initialize_Folder_index": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Folder_index",
+                "type": "integer",
+                "value": 0
+              }
+            ]
+          },
+          "runAfter": {
+            "Initialize_Folders_to_scan": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Initialize_Duplicate_found": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Duplicate_found",
+                "type": "boolean",
+                "value": false
+              }
+            ]
+          },
+          "runAfter": {
+            "Initialize_Folder_index": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Initialize_Fatal_error": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Fatal_error",
+                "type": "boolean",
+                "value": false
+              }
+            ]
+          },
+          "runAfter": {
+            "Initialize_Duplicate_found": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Initialize_Pending_mails": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Pending_mails",
+                "type": "array",
+                "value": []
+              }
+            ]
+          },
+          "runAfter": {
+            "Initialize_Fatal_error": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Find_root_archive": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "HttpRequest"
+            },
+            "parameters": {
+              "Uri": "@concat(outputs('Mailbox_base'), 'mailFolders?$filter=', encodeUriComponent(concat('displayName eq ', decodeUriComponent('%27'), outputs('Archive_folder_name'), decodeUriComponent('%27'))), '&$select=id,displayName&$top=1000')",
+              "Method": "GET",
+              "ContentType": "application/json"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Initialize_Pending_mails": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Find_inbox_archive": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "HttpRequest"
+            },
+            "parameters": {
+              "Uri": "@concat(outputs('Mailbox_base'), 'mailFolders/inbox/childFolders?$filter=', encodeUriComponent(concat('displayName eq ', decodeUriComponent('%27'), outputs('Archive_folder_name'), decodeUriComponent('%27'))), '&$select=id,displayName&$top=1000')",
+              "Method": "GET",
+              "ContentType": "application/json"
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Find_root_archive": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Archive_matches": {
+          "type": "Compose",
+          "inputs": "@union(body('Find_root_archive')?['value'], body('Find_inbox_archive')?['value'])",
+          "runAfter": {
+            "Find_inbox_archive": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Require_exact_archive": {
+          "type": "If",
+          "expression": "@or(not(equals(length(outputs('Archive_matches')), 1)), not(empty(body('Find_root_archive')?['@odata.nextLink'])), not(empty(body('Find_inbox_archive')?['@odata.nextLink'])))",
+          "actions": {
+            "Stop_ambiguous_archive": {
+              "type": "Terminate",
+              "inputs": {
+                "runStatus": "Failed",
+                "runError": {
+                  "code": "ArchiveFolderNotUnique",
+                  "message": "Expected exactly one Arkiv_10_2024_> folder at mailbox root or directly under Inbox. Check its exact name/location."
+                }
+              },
+              "runAfter": {}
+            }
+          },
+          "else": {
+            "actions": {}
+          },
+          "runAfter": {
+            "Archive_matches": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Read_saved_state": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+              "connectionName": "shared_onedriveforbusiness",
+              "operationId": "GetFileContentByPath"
+            },
+            "parameters": {
+              "path": "@concat(outputs('OneDrive_folder'), '/_automation-state.json')",
+              "inferContentType": false
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "runAfter": {
+            "Require_exact_archive": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Load_or_initialize_state": {
+          "type": "If",
+          "expression": "@equals(outputs('Read_saved_state')?['statusCode'], 200)",
+          "actions": {
+            "Parse_saved_state": {
+              "type": "ParseJson",
+              "inputs": {
+                "content": "@json(base64ToString(body('Read_saved_state')?['$content']))",
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "schemaVersion",
+                    "startUtc",
+                    "processed"
+                  ],
+                  "properties": {
+                    "schemaVersion": {
+                      "type": "integer",
+                      "enum": [
+                        1
+                      ]
+                    },
+                    "startUtc": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "processed": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              "runAfter": {}
+            },
+            "Load_start_time": {
+              "type": "SetVariable",
+              "inputs": {
+                "name": "Start_utc",
+                "value": "@body('Parse_saved_state')?['startUtc']"
+              },
+              "runAfter": {
+                "Parse_saved_state": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Load_processed_mails": {
+              "type": "SetVariable",
+              "inputs": {
+                "name": "Processed_messages",
+                "value": "@body('Parse_saved_state')?['processed']"
+              },
+              "runAfter": {
+                "Load_start_time": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Get_state_metadata": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                  "connectionName": "shared_onedriveforbusiness",
+                  "operationId": "GetFileMetadataByPath"
+                },
+                "parameters": {
+                  "path": "@concat(outputs('OneDrive_folder'), '/_automation-state.json')"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {
+                "Load_processed_mails": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Load_state_ID": {
+              "type": "SetVariable",
+              "inputs": {
+                "name": "State_file_ID",
+                "value": "@body('Get_state_metadata')?['Id']"
+              },
+              "runAfter": {
+                "Get_state_metadata": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
+          "else": {
+            "actions": {
+              "Only_initialize_on_404": {
+                "type": "If",
+                "expression": "@equals(outputs('Read_saved_state')?['statusCode'], 404)",
+                "actions": {
+                  "Initial_state_document": {
+                    "type": "Compose",
+                    "inputs": {
+                      "schemaVersion": 1,
+                      "startUtc": "@variables('Start_utc')",
+                      "processed": "@variables('Processed_messages')"
+                    },
+                    "runAfter": {}
+                  },
+                  "Create_state_file": {
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                        "connectionName": "shared_onedriveforbusiness",
+                        "operationId": "CreateFile"
+                      },
+                      "parameters": {
+                        "folderPath": "@outputs('OneDrive_folder')",
+                        "name": "_automation-state.json",
+                        "body": "@string(outputs('Initial_state_document'))"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    },
+                    "runAfter": {
+                      "Initial_state_document": [
+                        "Succeeded"
+                      ]
+                    }
+                  },
+                  "Remember_new_state_ID": {
+                    "type": "SetVariable",
+                    "inputs": {
+                      "name": "State_file_ID",
+                      "value": "@body('Create_state_file')?['Id']"
+                    },
+                    "runAfter": {
+                      "Create_state_file": [
+                        "Succeeded"
+                      ]
+                    }
+                  }
+                },
+                "else": {
+                  "actions": {
+                    "Stop_state_read_error": {
+                      "type": "Terminate",
+                      "inputs": {
+                        "runStatus": "Failed",
+                        "runError": {
+                          "code": "StateReadFailed",
+                          "message": "Cannot read the state file. Start time has not been reset."
+                        }
+                      },
+                      "runAfter": {}
+                    }
+                  }
+                },
+                "runAfter": {}
+              }
+            }
+          },
+          "runAfter": {
+            "Read_saved_state": [
+              "Succeeded",
+              "Failed",
+              "TimedOut"
+            ]
+          }
+        },
+        "Monitored_folders": {
+          "type": "Compose",
+          "inputs": "@createArray('inbox', first(outputs('Archive_matches'))?['id'])",
+          "runAfter": {
+            "Load_or_initialize_state": [
+              "Succeeded"
+            ]
+          }
+        },
+        "For_each_mail_folder": {
+          "type": "Foreach",
+          "foreach": "@outputs('Monitored_folders')",
+          "actions": {
+            "Set_message_page_URL": {
+              "type": "SetVariable",
+              "inputs": {
+                "name": "Message_page_URL",
+                "value": "@concat(outputs('Mailbox_base'), 'mailFolders/', encodeUriComponent(items('For_each_mail_folder')), '/messages?$filter=', encodeUriComponent(concat('receivedDateTime ge ', variables('Start_utc'), ' and hasAttachments eq true')), '&$orderby=receivedDateTime asc&$select=id,subject,receivedDateTime,hasAttachments&$top=100')"
+              },
+              "runAfter": {}
+            },
+            "Read_all_message_pages": {
+              "type": "Until",
+              "expression": "@or(empty(variables('Message_page_URL')), variables('Fatal_error'))",
+              "actions": {
+                "Validate_message_page_URL_iteration": {
+                  "type": "Scope",
+                  "actions": {
+                    "Validate_message_page_URL": {
+                      "type": "If",
+                      "expression": "@and(equals(variables('Fatal_error'), false), startsWith(variables('Message_page_URL'), outputs('Mailbox_base')))",
+                      "actions": {
+                        "Get_message_page": {
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                              "connectionName": "shared_office365",
+                              "operationId": "HttpRequest"
+                            },
+                            "parameters": {
+                              "Uri": "@variables('Message_page_URL')",
+                              "Method": "GET",
+                              "ContentType": "application/json"
+                            },
+                            "authentication": "@parameters('$authentication')"
+                          },
+                          "runAfter": {}
+                        },
+                        "Collect_each_mail": {
+                          "type": "Foreach",
+                          "foreach": "@body('Get_message_page')?['value']",
+                          "actions": {
+                            "Collect_unseen_mail": {
+                              "type": "If",
+                              "expression": "@not(contains(variables('Processed_messages'), items('Collect_each_mail')?['id']))",
+                              "actions": {
+                                "Queue_unseen_mail": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "Pending_mails",
+                                    "value": "@items('Collect_each_mail')"
+                                  },
+                                  "runAfter": {}
+                                }
+                              },
+                              "else": {
+                                "actions": {}
+                              },
+                              "runAfter": {}
+                            }
+                          },
+                          "runAfter": {
+                            "Get_message_page": [
+                              "Succeeded"
+                            ]
+                          },
+                          "runtimeConfiguration": {
+                            "concurrency": {
+                              "repetitions": 1
+                            }
+                          }
+                        },
+                        "Next_message_page": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "Message_page_URL",
+                            "value": "@coalesce(body('Get_message_page')?['@odata.nextLink'], '')"
+                          },
+                          "runAfter": {
+                            "Collect_each_mail": [
+                              "Succeeded"
+                            ]
+                          }
+                        }
+                      },
+                      "else": {
+                        "actions": {
+                          "Get_message_page_reject_invalid_URL": {
+                            "type": "SetVariable",
+                            "inputs": {
+                              "name": "Fatal_error",
+                              "value": true
+                            },
+                            "runAfter": {}
+                          }
+                        }
+                      },
+                      "runAfter": {}
+                    }
+                  },
+                  "runAfter": {}
+                },
+                "Validate_message_page_URL_iteration_failed": {
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "Fatal_error",
+                    "value": true
+                  },
+                  "runAfter": {
+                    "Validate_message_page_URL_iteration": [
+                      "Failed",
+                      "TimedOut"
+                    ]
+                  }
+                }
+              },
+              "limit": {
+                "count": 5000,
+                "timeout": "PT1H"
+              },
+              "operationOptions": "FailWhenLimitsReached",
+              "runAfter": {
+                "Set_message_page_URL": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
+          "runAfter": {
+            "Monitored_folders": [
+              "Succeeded"
+            ]
+          },
+          "runtimeConfiguration": {
+            "concurrency": {
+              "repetitions": 1
+            }
+          }
+        },
+        "Stop_failed_message_scan": {
+          "type": "If",
+          "expression": "@equals(variables('Fatal_error'), true)",
+          "actions": {
+            "Message_scan_failed": {
+              "type": "Terminate",
+              "inputs": {
+                "runStatus": "Failed",
+                "runError": {
+                  "code": "MessageScanFailed",
+                  "message": "Reading mailbox pages failed; no mail has been marked processed."
+                }
+              },
+              "runAfter": {}
+            }
+          },
+          "else": {
+            "actions": {}
+          },
+          "runAfter": {
+            "For_each_mail_folder": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Index_files_for_new_mails": {
+          "type": "If",
+          "expression": "@greater(length(variables('Pending_mails')), 0)",
+          "actions": {
+            "Get_destination_metadata": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                  "connectionName": "shared_onedriveforbusiness",
+                  "operationId": "GetFileMetadataByPath"
+                },
+                "parameters": {
+                  "path": "@outputs('OneDrive_folder')"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runAfter": {}
+            },
+            "Add_destination_to_queue": {
+              "type": "AppendToArrayVariable",
+              "inputs": {
+                "name": "Folders_to_scan",
+                "value": "@body('Get_destination_metadata')?['Id']"
+              },
+              "runAfter": {
+                "Get_destination_metadata": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Walk_destination_folders": {
+              "type": "Until",
+              "expression": "@or(greaterOrEquals(variables('Folder_index'), length(variables('Folders_to_scan'))), variables('Fatal_error'))",
+              "actions": {
+                "List_destination_children_iteration": {
+                  "type": "Scope",
+                  "actions": {
+                    "List_destination_children": {
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "host": {
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                          "connectionName": "shared_onedriveforbusiness",
+                          "operationId": "ListFolderV2"
+                        },
+                        "parameters": {
+                          "id": "@variables('Folders_to_scan')[variables('Folder_index')]"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      },
+                      "runAfter": {},
+                      "runtimeConfiguration": {
+                        "paginationPolicy": {
+                          "minimumItemCount": 5000
+                        }
+                      }
+                    },
+                    "Require_complete_file_listing": {
+                      "type": "If",
+                      "expression": "@or(not(empty(body('List_destination_children')?['nextLink'])), greaterOrEquals(length(body('List_destination_children')?['value']), 5000))",
+                      "actions": {
+                        "Stop_incomplete_file_listing": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "Fatal_error",
+                            "value": true
+                          },
+                          "runAfter": {}
+                        }
+                      },
+                      "else": {
+                        "actions": {}
+                      },
+                      "runAfter": {
+                        "List_destination_children": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
+                    "Index_each_child": {
+                      "type": "Foreach",
+                      "foreach": "@body('List_destination_children')?['value']",
+                      "actions": {
+                        "Folder_or_PDF": {
+                          "type": "If",
+                          "expression": "@equals(items('Index_each_child')?['IsFolder'], true)",
+                          "actions": {
+                            "Queue_subfolder": {
+                              "type": "AppendToArrayVariable",
+                              "inputs": {
+                                "name": "Folders_to_scan",
+                                "value": "@items('Index_each_child')?['Id']"
+                              },
+                              "runAfter": {}
+                            }
+                          },
+                          "else": {
+                            "actions": {
+                              "Index_PDF_only": {
+                                "type": "If",
+                                "expression": "@endsWith(toLower(coalesce(items('Index_each_child')?['Name'], '')), '.pdf')",
+                                "actions": {
+                                  "Add_existing_PDF": {
+                                    "type": "AppendToArrayVariable",
+                                    "inputs": {
+                                      "name": "Existing_PDFs",
+                                      "value": "@items('Index_each_child')"
+                                    },
+                                    "runAfter": {}
+                                  }
+                                },
+                                "else": {
+                                  "actions": {}
+                                },
+                                "runAfter": {}
+                              }
+                            }
+                          },
+                          "runAfter": {}
+                        }
+                      },
+                      "runAfter": {
+                        "Require_complete_file_listing": [
+                          "Succeeded"
+                        ]
+                      },
+                      "runtimeConfiguration": {
+                        "concurrency": {
+                          "repetitions": 1
+                        }
+                      }
+                    },
+                    "Advance_folder_index": {
+                      "type": "IncrementVariable",
+                      "inputs": {
+                        "name": "Folder_index",
+                        "value": 1
+                      },
+                      "runAfter": {
+                        "Index_each_child": [
+                          "Succeeded"
+                        ]
+                      }
+                    }
+                  },
+                  "runAfter": {}
+                },
+                "List_destination_children_iteration_failed": {
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "Fatal_error",
+                    "value": true
+                  },
+                  "runAfter": {
+                    "List_destination_children_iteration": [
+                      "Failed",
+                      "TimedOut"
+                    ]
+                  }
+                }
+              },
+              "limit": {
+                "count": 5000,
+                "timeout": "PT1H"
+              },
+              "operationOptions": "FailWhenLimitsReached",
+              "runAfter": {
+                "Add_destination_to_queue": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
+          "else": {
+            "actions": {}
+          },
+          "runAfter": {
+            "Stop_failed_message_scan": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Stop_failed_file_scan": {
+          "type": "If",
+          "expression": "@equals(variables('Fatal_error'), true)",
+          "actions": {
+            "File_scan_failed": {
+              "type": "Terminate",
+              "inputs": {
+                "runStatus": "Failed",
+                "runError": {
+                  "code": "FileScanFailed",
+                  "message": "Reading the complete OneDrive PDF list failed; no PDF has been saved."
+                }
+              },
+              "runAfter": {}
+            }
+          },
+          "else": {
+            "actions": {}
+          },
+          "runAfter": {
+            "Index_files_for_new_mails": [
+              "Succeeded"
+            ]
+          }
+        },
+        "For_each_mail": {
+          "type": "Foreach",
+          "foreach": "@variables('Pending_mails')",
+          "actions": {
+            "Set_attachment_page_URL": {
+              "type": "SetVariable",
+              "inputs": {
+                "name": "Attachment_page_URL",
+                "value": "@concat(outputs('Mailbox_base'), 'messages/', encodeUriComponent(items('For_each_mail')?['id']), '/attachments?$select=id,name,isInline,size&$top=100')"
+              },
+              "runAfter": {}
+            },
+            "Read_all_attachment_pages": {
+              "type": "Until",
+              "expression": "@or(empty(variables('Attachment_page_URL')), variables('Fatal_error'))",
+              "actions": {
+                "Validate_attachment_page_URL_iteration": {
+                  "type": "Scope",
+                  "actions": {
+                    "Validate_attachment_page_URL": {
+                      "type": "If",
+                      "expression": "@and(equals(variables('Fatal_error'), false), startsWith(variables('Attachment_page_URL'), outputs('Mailbox_base')))",
+                      "actions": {
+                        "Get_attachment_page": {
+                          "type": "OpenApiConnection",
+                          "inputs": {
+                            "host": {
+                              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                              "connectionName": "shared_office365",
+                              "operationId": "HttpRequest"
+                            },
+                            "parameters": {
+                              "Uri": "@variables('Attachment_page_URL')",
+                              "Method": "GET",
+                              "ContentType": "application/json"
+                            },
+                            "authentication": "@parameters('$authentication')"
+                          },
+                          "runAfter": {}
+                        },
+                        "Filter_invoice_PDFs": {
+                          "type": "Query",
+                          "inputs": {
+                            "from": "@body('Get_attachment_page')?['value']",
+                            "where": "@and(or(and(startsWith(toLower(coalesce(item()?['name'], '')), 'faktura_'), isInt(slice(toLower(coalesce(item()?['name'], '')), 8, -4)), contains(toLower(coalesce(items('For_each_mail')?['subject'], '')), 'fra inco')), startsWith(toLower(coalesce(item()?['name'], '')), 'kreditnota_'), contains(toLower(coalesce(item()?['name'], '')), 'royal unibrew'), startsWith(toLower(coalesce(item()?['name'], '')), 'inco')), endsWith(toLower(coalesce(item()?['name'], '')), '.pdf'), equals(coalesce(item()?['isInline'], false), false))"
+                          },
+                          "runAfter": {
+                            "Get_attachment_page": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Save_each_invoice": {
+                          "type": "Foreach",
+                          "foreach": "@body('Filter_invoice_PDFs')",
+                          "actions": {
+                            "Get_attachment_V2": {
+                              "type": "OpenApiConnection",
+                              "inputs": {
+                                "host": {
+                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                                  "connectionName": "shared_office365",
+                                  "operationId": "GetAttachment_V2"
+                                },
+                                "parameters": {
+                                  "messageId": "@items('For_each_mail')?['id']",
+                                  "attachmentId": "@items('Save_each_invoice')?['id']",
+                                  "mailboxAddress": "@outputs('Shared_mailbox')"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                              },
+                              "runAfter": {}
+                            },
+                            "Reset_duplicate_flag": {
+                              "type": "SetVariable",
+                              "inputs": {
+                                "name": "Duplicate_found",
+                                "value": false
+                              },
+                              "runAfter": {
+                                "Get_attachment_V2": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "PDF_byte_length": {
+                              "type": "Compose",
+                              "inputs": "@sub(div(mul(length(body('Get_attachment_V2')?['contentBytes']), 3), 4), if(endsWith(body('Get_attachment_V2')?['contentBytes'], '=='), 2, if(endsWith(body('Get_attachment_V2')?['contentBytes'], '='), 1, 0)))",
+                              "runAfter": {
+                                "Reset_duplicate_flag": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "Same_size_PDFs": {
+                              "type": "Query",
+                              "inputs": {
+                                "from": "@variables('Existing_PDFs')",
+                                "where": "@equals(item()?['Size'], outputs('PDF_byte_length'))"
+                              },
+                              "runAfter": {
+                                "PDF_byte_length": [
+                                  "Succeeded"
+                                ]
+                              }
+                            },
+                            "Compare_saved_PDFs": {
+                              "type": "Foreach",
+                              "foreach": "@body('Same_size_PDFs')",
+                              "actions": {
+                                "Compare_until_match": {
+                                  "type": "If",
+                                  "expression": "@equals(variables('Duplicate_found'), false)",
+                                  "actions": {
+                                    "Read_existing_PDF": {
+                                      "type": "OpenApiConnection",
+                                      "inputs": {
+                                        "host": {
+                                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                                          "connectionName": "shared_onedriveforbusiness",
+                                          "operationId": "GetFileContent"
+                                        },
+                                        "parameters": {
+                                          "id": "@items('Compare_saved_PDFs')?['Id']",
+                                          "inferContentType": false
+                                        },
+                                        "authentication": "@parameters('$authentication')"
+                                      },
+                                      "runAfter": {}
+                                    },
+                                    "Match_PDF_content": {
+                                      "type": "If",
+                                      "expression": "@equals(body('Read_existing_PDF')?['$content'], body('Get_attachment_V2')?['contentBytes'])",
+                                      "actions": {
+                                        "Remember_duplicate": {
+                                          "type": "SetVariable",
+                                          "inputs": {
+                                            "name": "Duplicate_found",
+                                            "value": true
+                                          },
+                                          "runAfter": {}
+                                        }
+                                      },
+                                      "else": {
+                                        "actions": {}
+                                      },
+                                      "runAfter": {
+                                        "Read_existing_PDF": [
+                                          "Succeeded"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "else": {
+                                    "actions": {}
+                                  },
+                                  "runAfter": {}
+                                }
+                              },
+                              "runAfter": {
+                                "Same_size_PDFs": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "runtimeConfiguration": {
+                                "concurrency": {
+                                  "repetitions": 1
+                                }
+                              }
+                            },
+                            "Save_only_new_content": {
+                              "type": "If",
+                              "expression": "@equals(variables('Duplicate_found'), false)",
+                              "actions": {
+                                "Received_date_folder": {
+                                  "type": "Compose",
+                                  "inputs": "@concat(outputs('OneDrive_folder'), '/', convertTimeZone(items('For_each_mail')?['receivedDateTime'], 'UTC', 'Romance Standard Time', 'yyyy-MM-dd'))",
+                                  "runAfter": {}
+                                },
+                                "Clean_file_stem": {
+                                  "type": "Compose",
+                                  "inputs": "@take(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(trim(substring(items('Save_each_invoice')?['name'], 0, sub(length(items('Save_each_invoice')?['name']), 4))), '/', '_'), '\\', '_'), ':', '_'), '*', '_'), '?', '_'), '\"', '_'), '<', '_'), '>', '_'), '|', '_'), '#', '_'), '%', '_'), decodeUriComponent('%27'), '_'), 120)",
+                                  "runAfter": {
+                                    "Received_date_folder": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                },
+                                "Same_name_PDFs": {
+                                  "type": "Query",
+                                  "inputs": {
+                                    "from": "@variables('Existing_PDFs')",
+                                    "where": "@equals(toLower(coalesce(item()?['Name'], '')), toLower(concat(outputs('Clean_file_stem'), '.pdf')))"
+                                  },
+                                  "runAfter": {
+                                    "Clean_file_stem": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                },
+                                "Unique_file_name": {
+                                  "type": "Compose",
+                                  "inputs": "@if(empty(body('Same_name_PDFs')), concat(outputs('Clean_file_stem'), '.pdf'), concat(outputs('Clean_file_stem'), '_', take(guid(), 8), '.pdf'))",
+                                  "runAfter": {
+                                    "Same_name_PDFs": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                },
+                                "Create_file_in_OneDrive": {
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "host": {
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                                      "connectionName": "shared_onedriveforbusiness",
+                                      "operationId": "CreateFile"
+                                    },
+                                    "parameters": {
+                                      "folderPath": "@outputs('Received_date_folder')",
+                                      "name": "@outputs('Unique_file_name')",
+                                      "body": "@base64ToBinary(body('Get_attachment_V2')?['contentBytes'])"
+                                    },
+                                    "authentication": "@parameters('$authentication')"
+                                  },
+                                  "runAfter": {
+                                    "Unique_file_name": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "runtimeConfiguration": {
+                                    "contentTransfer": {
+                                      "transferMode": "Chunked"
+                                    }
+                                  }
+                                },
+                                "Add_new_PDF_to_index": {
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "Existing_PDFs",
+                                    "value": "@body('Create_file_in_OneDrive')"
+                                  },
+                                  "runAfter": {
+                                    "Create_file_in_OneDrive": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                }
+                              },
+                              "else": {
+                                "actions": {}
+                              },
+                              "runAfter": {
+                                "Compare_saved_PDFs": [
+                                  "Succeeded"
+                                ]
+                              }
+                            }
+                          },
+                          "runAfter": {
+                            "Filter_invoice_PDFs": [
+                              "Succeeded"
+                            ]
+                          },
+                          "runtimeConfiguration": {
+                            "concurrency": {
+                              "repetitions": 1
+                            }
+                          }
+                        },
+                        "Next_attachment_page": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "Attachment_page_URL",
+                            "value": "@coalesce(body('Get_attachment_page')?['@odata.nextLink'], '')"
+                          },
+                          "runAfter": {
+                            "Save_each_invoice": [
+                              "Succeeded"
+                            ]
+                          }
+                        }
+                      },
+                      "else": {
+                        "actions": {
+                          "Get_attachment_page_reject_invalid_URL": {
+                            "type": "SetVariable",
+                            "inputs": {
+                              "name": "Fatal_error",
+                              "value": true
+                            },
+                            "runAfter": {}
+                          }
+                        }
+                      },
+                      "runAfter": {}
+                    }
+                  },
+                  "runAfter": {}
+                },
+                "Validate_attachment_page_URL_iteration_failed": {
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "Fatal_error",
+                    "value": true
+                  },
+                  "runAfter": {
+                    "Validate_attachment_page_URL_iteration": [
+                      "Failed",
+                      "TimedOut"
+                    ]
+                  }
+                }
+              },
+              "limit": {
+                "count": 5000,
+                "timeout": "PT1H"
+              },
+              "operationOptions": "FailWhenLimitsReached",
+              "runAfter": {
+                "Set_attachment_page_URL": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Persist_only_complete_mail": {
+              "type": "If",
+              "expression": "@equals(variables('Fatal_error'), false)",
+              "actions": {
+                "Remember_processed_mail": {
+                  "type": "AppendToArrayVariable",
+                  "inputs": {
+                    "name": "Processed_messages",
+                    "value": "@items('For_each_mail')?['id']"
+                  },
+                  "runAfter": {}
+                },
+                "Updated_state_document": {
+                  "type": "Compose",
+                  "inputs": {
+                    "schemaVersion": 1,
+                    "startUtc": "@variables('Start_utc')",
+                    "processed": "@variables('Processed_messages')"
+                  },
+                  "runAfter": {
+                    "Remember_processed_mail": [
+                      "Succeeded"
+                    ]
+                  }
+                },
+                "Persist_processed_mail": {
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                      "connectionName": "shared_onedriveforbusiness",
+                      "operationId": "UpdateFile"
+                    },
+                    "parameters": {
+                      "id": "@variables('State_file_ID')",
+                      "body": "@string(outputs('Updated_state_document'))"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "runAfter": {
+                    "Updated_state_document": [
+                      "Succeeded"
+                    ]
+                  }
+                }
+              },
+              "else": {
+                "actions": {}
+              },
+              "runAfter": {
+                "Read_all_attachment_pages": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
+          "runAfter": {
+            "Stop_failed_file_scan": [
+              "Succeeded"
+            ]
+          },
+          "runtimeConfiguration": {
+            "concurrency": {
+              "repetitions": 1
+            }
+          }
+        },
+        "Stop_failed_attachment_scan": {
+          "type": "If",
+          "expression": "@equals(variables('Fatal_error'), true)",
+          "actions": {
+            "Attachment_scan_failed": {
+              "type": "Terminate",
+              "inputs": {
+                "runStatus": "Failed",
+                "runError": {
+                  "code": "AttachmentScanFailed",
+                  "message": "Reading or saving PDF attachments failed. The next run retries incomplete mail."
+                }
+              },
+              "runAfter": {}
+            }
+          },
+          "else": {
+            "actions": {}
+          },
+          "runAfter": {
+            "For_each_mail": [
+              "Succeeded"
+            ]
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null,
+    "connectionReferences": {
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "lgi_invoice_outlook"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      },
+      "shared_onedriveforbusiness": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "lgi_invoice_onedrive"
+        },
+        "api": {
+          "name": "shared_onedriveforbusiness"
+        }
+      }
+    }
+  },
+  "schemaVersion": "1.0.0.0"
+}

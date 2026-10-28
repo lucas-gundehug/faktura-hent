@@ -1,0 +1,148 @@
+{
+  "name": "d3c10c43-c4de-5b70-8360-0735390b41e1",
+  "id": "/providers/Microsoft.Flow/flows/d3c10c43-c4de-5b70-8360-0735390b41e1",
+  "type": "Microsoft.Flow/flows",
+  "properties": {
+    "apiId": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+    "displayName": "Gem nye fakturaer fra Outlook",
+    "description": "Save new invoice PDFs matching Kreditnota_, Royal Unibrew or inco, plus Faktura_<number>.pdf when the subject contains fra inco. Case-insensitive; inline attachments excluded; unique file names.",
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "When_a_new_email_arrives_V3": {
+          "type": "OpenApiConnectionNotification",
+          "inputs": {
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "OnNewEmailV3"
+            },
+            "parameters": {
+              "folderPath": "Inbox",
+              "includeAttachments": false,
+              "importance": "Any",
+              "fetchOnlyWithAttachment": true
+            },
+            "authentication": "@parameters('$authentication')"
+          },
+          "splitOn": "@triggerOutputs()?['body/value']"
+        }
+      },
+      "actions": {
+        "OneDrive_folder": {
+          "type": "Compose",
+          "inputs": "/Fakturaer",
+          "runAfter": {},
+          "description": "Existing destination folder in OneDrive for Business. Change this value if needed."
+        },
+        "Filter_invoice_PDFs": {
+          "type": "Query",
+          "inputs": {
+            "from": "@coalesce(triggerBody()?['attachments'], json('[]'))",
+            "where": "@and(or(and(startsWith(toLower(coalesce(item()?['name'], '')), 'faktura_'), isInt(slice(toLower(coalesce(item()?['name'], '')), 8, -4)), contains(toLower(coalesce(triggerBody()?['subject'], '')), 'fra inco')), startsWith(toLower(coalesce(item()?['name'], '')), 'kreditnota_'), contains(toLower(coalesce(item()?['name'], '')), 'royal unibrew'), startsWith(toLower(coalesce(item()?['name'], '')), 'inco')), endsWith(toLower(coalesce(item()?['name'], '')), '.pdf'), equals(coalesce(item()?['isInline'], false), false))"
+          },
+          "runAfter": {
+            "OneDrive_folder": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Save_each_invoice": {
+          "type": "Foreach",
+          "foreach": "@body('Filter_invoice_PDFs')",
+          "runAfter": {
+            "Filter_invoice_PDFs": [
+              "Succeeded"
+            ]
+          },
+          "runtimeConfiguration": {
+            "concurrency": {
+              "repetitions": 1
+            }
+          },
+          "actions": {
+            "Get_attachment_V2": {
+              "type": "OpenApiConnection",
+              "runAfter": {},
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                  "connectionName": "shared_office365",
+                  "operationId": "GetAttachment_V2"
+                },
+                "parameters": {
+                  "messageId": "@triggerBody()?['id']",
+                  "attachmentId": "@items('Save_each_invoice')?['id']"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Unique_file_name": {
+              "type": "Compose",
+              "inputs": "@concat(take(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(trim(substring(items('Save_each_invoice')?['name'], 0, sub(length(items('Save_each_invoice')?['name']), 4))), '/', '_'), '\\', '_'), ':', '_'), '*', '_'), '?', '_'), '\"', '_'), '<', '_'), '>', '_'), '|', '_'), '#', '_'), '%', '_'), decodeUriComponent('%27'), '_'), 120), '_', guid(), '.pdf')",
+              "runAfter": {
+                "Get_attachment_V2": [
+                  "Succeeded"
+                ]
+              },
+              "description": "Keep the invoice name (up to 120 characters) and add a UUID so separate emails do not collide. A resubmitted run creates another copy."
+            },
+            "Create_file_in_OneDrive": {
+              "type": "OpenApiConnection",
+              "runAfter": {
+                "Unique_file_name": [
+                  "Succeeded"
+                ]
+              },
+              "inputs": {
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                  "connectionName": "shared_onedriveforbusiness",
+                  "operationId": "CreateFile"
+                },
+                "parameters": {
+                  "folderPath": "@outputs('OneDrive_folder')",
+                  "name": "@outputs('Unique_file_name')",
+                  "body": "@base64ToBinary(body('Get_attachment_V2')?['contentBytes'])"
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "runtimeConfiguration": {
+                "contentTransfer": {
+                  "transferMode": "Chunked"
+                }
+              }
+            }
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "connectionReferences": {
+      "shared_office365": {
+        "connectionName": "shared_office365-select-at-import",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+        "tier": "NotSpecified"
+      },
+      "shared_onedriveforbusiness": {
+        "connectionName": "shared_onedriveforbusiness-select-at-import",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+        "tier": "NotSpecified"
+      }
+    },
+    "flowFailureAlertSubscribed": false
+  }
+}
