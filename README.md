@@ -56,7 +56,10 @@ it, so if someone else imports the same release afterwards, they get a permissio
 ("does not have WriteAccess … Forbindelsesreference"). Updates must then be imported
 by the owner. An older **Invoice PDF automation** solution is a separate, older flow
 and is not changed by this import.
-Files are saved in the OneDrive of whoever owns the OneDrive connection.
+Files are saved in the OneDrive of the account the **OneDrive connection** is signed in
+with (shown under **Connections** on the flow's details page), not in Outlook. If that
+is faktura@alcora.dk, sign in to OneDrive as faktura@alcora.dk and **share** the
+`Fakturaer` folder with colleagues; they can then use **Add shortcut to My files**.
 
 Detailed guide (Danish): [power-automate/SHARED-MAILBOX-SETUP.md](power-automate/SHARED-MAILBOX-SETUP.md).
 

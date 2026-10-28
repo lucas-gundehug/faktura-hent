@@ -7,6 +7,10 @@ Power Automate cloud flow that saves invoice PDFs from the shared mailbox
 
 ## Facts
 - Monitored folders: Inbox and the archive folder named exactly `Arkiv_10_2024_>`.
+- `faktura@alcora.dk` is a licensed account with its own login (MFA via Authenticator),
+  not only a shared mailbox. The live flow's OneDrive connection is signed in as it, so
+  the PDFs land in faktura@alcora.dk's own OneDrive and are shared from there to
+  colleagues (e.g. cl@alcora.dk).
 - Suppliers often name attachments after the due date, not the invoice number
   (e.g. `inco Aarhus A_S_29.12.2026.pdf`, `Royal Unibrew A_S_30.11.2026.pdf`), so
   different invoices share filenames. The flow keeps original names and adds a
