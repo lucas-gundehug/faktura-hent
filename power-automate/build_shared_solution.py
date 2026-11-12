@@ -17,7 +17,7 @@ from build_solution import validate_clientdata
 
 SOURCE = HERE / 'build-input' / 'solution-container-v4.zip'
 TARGET = HERE / 'Gem-nye-fakturaer-solution-v5.zip'
-VERSION = '1.0.0.6'
+VERSION = '1.0.0.7'
 
 OLD_WORKFLOW_ID = 'd3c10c43-c4de-5b70-8360-0735390b41e1'
 WORKFLOW_ID = str(uuid5(NAMESPACE_URL, 'urn:lucas:faktura-hent:shared-mailbox:workflow'))

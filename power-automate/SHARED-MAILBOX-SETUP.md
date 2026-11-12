@@ -1,6 +1,6 @@
 # v5: delt postkasse, datomapper og dubletter
 
-Importfil: **Gem-nye-fakturaer-solution-v5.zip**, version **1.0.0.6**.
+Importfil: **Gem-nye-fakturaer-solution-v5.zip**, version **1.0.0.7**.
 
 Flowet tjekker `faktura@alcora.dk` hvert 15. minut. Det læser både Indbakke
 og mappen med det præcise navn `Arkiv_10_2024_>`. Arkivmappen kan ligge direkte

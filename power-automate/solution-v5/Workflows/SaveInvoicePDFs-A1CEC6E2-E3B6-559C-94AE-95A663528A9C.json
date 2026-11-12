@@ -529,7 +529,7 @@
               "type": "SetVariable",
               "inputs": {
                 "name": "Message_page_URL",
-                "value": "@concat(outputs('Mailbox_base'), 'mailFolders/', encodeUriComponent(items('For_each_mail_folder')), '/messages?$filter=', encodeUriComponent(concat('receivedDateTime ge ', variables('Start_utc'), ' and hasAttachments eq true')), '&$orderby=receivedDateTime asc&$select=id,subject,receivedDateTime,hasAttachments&$top=100')"
+                "value": "@concat(concat(outputs('Mailbox_base'), 'mailFolders/', encodeUriComponent(items('For_each_mail_folder')), '/messages'), '?$filter=', encodeUriComponent(concat('receivedDateTime ge ', variables('Start_utc'), ' and hasAttachments eq true')), '&$orderby=receivedDateTime asc&$select=id,subject,receivedDateTime,hasAttachments&$top=100')"
               },
               "runAfter": {}
             },
@@ -599,7 +599,7 @@
                           "type": "SetVariable",
                           "inputs": {
                             "name": "Message_page_URL",
-                            "value": "@coalesce(body('Get_message_page')?['@odata.nextLink'], '')"
+                            "value": "@if(empty(coalesce(body('Get_message_page')?['@odata.nextLink'], '')), '', if(contains(coalesce(body('Get_message_page')?['@odata.nextLink'], ''), '?'), concat(concat(outputs('Mailbox_base'), 'mailFolders/', encodeUriComponent(items('For_each_mail_folder')), '/messages'), '?', replace(last(split(coalesce(body('Get_message_page')?['@odata.nextLink'], ''), '?')), '%24', '$')), coalesce(body('Get_message_page')?['@odata.nextLink'], '')))"
                           },
                           "runAfter": {
                             "Collect_each_mail": [
@@ -903,7 +903,7 @@
               "type": "SetVariable",
               "inputs": {
                 "name": "Attachment_page_URL",
-                "value": "@concat(outputs('Mailbox_base'), 'messages/', encodeUriComponent(items('For_each_mail')?['id']), '/attachments?$select=id,name,isInline,size&$top=100')"
+                "value": "@concat(concat(outputs('Mailbox_base'), 'messages/', encodeUriComponent(items('For_each_mail')?['id']), '/attachments'), '?$select=id,name,isInline,size&$top=100')"
               },
               "runAfter": {}
             },
@@ -1168,7 +1168,7 @@
                           "type": "SetVariable",
                           "inputs": {
                             "name": "Attachment_page_URL",
-                            "value": "@coalesce(body('Get_attachment_page')?['@odata.nextLink'], '')"
+                            "value": "@if(empty(coalesce(body('Get_attachment_page')?['@odata.nextLink'], '')), '', if(contains(coalesce(body('Get_attachment_page')?['@odata.nextLink'], ''), '?'), concat(concat(outputs('Mailbox_base'), 'messages/', encodeUriComponent(items('For_each_mail')?['id']), '/attachments'), '?', replace(last(split(coalesce(body('Get_attachment_page')?['@odata.nextLink'], ''), '?')), '%24', '$')), coalesce(body('Get_attachment_page')?['@odata.nextLink'], '')))"
                           },
                           "runAfter": {
                             "Save_each_invoice": [
