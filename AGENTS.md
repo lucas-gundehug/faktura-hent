@@ -17,6 +17,18 @@ Power Automate cloud flow that saves invoice PDFs from the shared mailbox
   short random suffix only when a different PDF already has that name. Identical
   PDFs are skipped by byte comparison.
 
+- Microsoft Graph's "next page" link (`@odata.nextLink`) is not spelled like the URL
+  the flow requested. 1.0.0.6 only followed links starting with its own mailbox URL, so
+  from the day the archive held more than 100 attachment mails since the start time,
+  every run failed with `MessageScanFailed` (run history 11–12 Nov 2026). Since 1.0.0.7
+  the flow keeps its own path and reuses only the link's query string. Keep the test
+  stand-in for Graph handing out links in a different spelling than the request.
+- A run-history CSV export shows no inputs/outputs for steps inside loops, only the
+  status and time of their last execution.
+- Every run re-lists all attachment mails since the start time stored in
+  `_automation-state.json` (28 Oct 2026 on the live flow), so runs get slower as mail
+  accumulates. Not yet addressed.
+
 - The v5 package has its own solution identity (`FakturaHentSharedMailbox`, publisher
   `FakturaHent`, prefix `fkh`, own workflow ID and connection references). The older
   `InvoiceAutomation` solution exists in the org environment owned by Lucas; reusing

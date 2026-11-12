@@ -76,6 +76,20 @@ def checked_http(name, uri, remainder):
                      {name + '_reject_invalid_URL': variable('Fatal_error', True)})
 
 
+def next_page(response, page):
+    """URL of the page after `response`, or '' when it was the last one.
+
+    Graph's nextLink is not spelled like the request URL (in Nov 2026 it failed
+    the mailbox prefix check on every live run), so only its paging options are
+    reused, on the path this flow built itself. A link without options cannot
+    be a paging link; it is passed on unchanged and rejected by checked_http.
+    Every branch tolerates a missing link, whether or not `if` is lazy.
+    """
+    link = "coalesce(body('" + response + "')?['@odata.nextLink'], '')"
+    return ("@if(empty(" + link + "), '', if(contains(" + link + ", '?'), concat(" + page[1:]
+            + ", '?', replace(last(split(" + link + ", '?')), '%24', '$')), " + link + "))")
+
+
 def definition():
     legacy = next(v for k, v in make_package().items() if k.endswith('definition.json'))['properties']['definition']
     filter_expression = legacy['actions']['Filter_invoice_PDFs']['inputs']['where'].replace(
@@ -151,15 +165,17 @@ def definition():
         )),
     )
 
+    attachment_page = "@concat(outputs('Mailbox_base'), 'messages/', encodeUriComponent(items('For_each_mail')?['id']), '/attachments')"
+    message_page = "@concat(outputs('Mailbox_base'), 'mailFolders/', encodeUriComponent(items('For_each_mail_folder')), '/messages')"
     process_mail = sequence(
         Set_attachment_page_URL=variable('Attachment_page_URL',
-            "@concat(outputs('Mailbox_base'), 'messages/', encodeUriComponent(items('For_each_mail')?['id']), '/attachments?$select=id,name,isInline,size&$top=100')"),
+            "@concat(" + attachment_page[1:] + ", '?$select=id,name,isInline,size&$top=100')"),
         Read_all_attachment_pages=until("@empty(variables('Attachment_page_URL'))", {
             'Validate_attachment_page_URL': checked_http('Get_attachment_page', "@variables('Attachment_page_URL')", {
                 'Filter_invoice_PDFs': {'type': 'Query', 'inputs': {
                     'from': "@body('Get_attachment_page')?['value']", 'where': filter_expression}, 'runAfter': {}},
                 'Save_each_invoice': foreach("@body('Filter_invoice_PDFs')", save_pdf),
-                'Next_attachment_page': variable('Attachment_page_URL', "@coalesce(body('Get_attachment_page')?['@odata.nextLink'], '')"),
+                'Next_attachment_page': variable('Attachment_page_URL', next_page('Get_attachment_page', attachment_page)),
             }),
         }),
         Persist_only_complete_mail=condition("@equals(variables('Fatal_error'), false)", sequence(
@@ -220,14 +236,14 @@ def definition():
         Monitored_folders=compose("@createArray('inbox', first(outputs('Archive_matches'))?['id'])"),
         For_each_mail_folder=foreach("@outputs('Monitored_folders')", sequence(
             Set_message_page_URL=variable('Message_page_URL',
-                "@concat(outputs('Mailbox_base'), 'mailFolders/', encodeUriComponent(items('For_each_mail_folder')), '/messages?$filter=', encodeUriComponent(concat('receivedDateTime ge ', variables('Start_utc'), ' and hasAttachments eq true')), '&$orderby=receivedDateTime asc&$select=id,subject,receivedDateTime,hasAttachments&$top=100')"),
+                "@concat(" + message_page[1:] + ", '?$filter=', encodeUriComponent(concat('receivedDateTime ge ', variables('Start_utc'), ' and hasAttachments eq true')), '&$orderby=receivedDateTime asc&$select=id,subject,receivedDateTime,hasAttachments&$top=100')"),
             Read_all_message_pages=until("@empty(variables('Message_page_URL'))", {
                 'Validate_message_page_URL': checked_http('Get_message_page', "@variables('Message_page_URL')", {
                     'Collect_each_mail': foreach("@body('Get_message_page')?['value']", {
                         'Collect_unseen_mail': condition("@not(contains(variables('Processed_messages'), items('Collect_each_mail')?['id']))",
                             {'Queue_unseen_mail': append('Pending_mails', "@items('Collect_each_mail')")}),
                     }),
-                    'Next_message_page': variable('Message_page_URL', "@coalesce(body('Get_message_page')?['@odata.nextLink'], '')"),
+                    'Next_message_page': variable('Message_page_URL', next_page('Get_message_page', message_page)),
                 }),
             }),
         )),

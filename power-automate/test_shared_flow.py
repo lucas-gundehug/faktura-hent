@@ -35,7 +35,7 @@ class LocalRuntime:
         self.fail_after_pdf = False
         self.archive_count = 1
         self.incomplete_file_listing = False
-        self.bad_next_link = False
+        self.bad_next_link = None
         self.requests = []
 
     def expr(self, value):
@@ -81,7 +81,8 @@ class LocalRuntime:
             'contains': lambda a, b: b in a, 'startsWith': str.startswith,
             'endsWith': str.endswith, 'toLower': str.lower, 'trim': str.strip,
             'coalesce': lambda *xs: next((x for x in xs if x is not None), None),
-            'length': len, 'first': lambda x: x[0], 'concat': lambda *xs: ''.join(xs),
+            'length': len, 'first': lambda x: x[0], 'last': lambda x: x[-1],
+            'split': str.split, 'concat': lambda *xs: ''.join(xs),
             'json': json.loads, 'string': lambda x: json.dumps(x, separators=(',', ':')),
             'createArray': lambda *xs: list(xs), 'union': union,
             'sub': lambda a, b: a - b, 'mul': lambda a, b: a * b,
@@ -200,10 +201,17 @@ class LocalRuntime:
             skip = int(query.get('$skip', [0])[0]); page = vals[skip:skip+self.page_size]
             result = {'value': copy.deepcopy(page)}
             if skip + self.page_size < len(vals):
-                clean = re.sub(r'&?\$skip=\d+', '', p['Uri'])
-                result['@odata.nextLink'] = clean + ('&' if '?' in clean else '?') + '$skip=' + str(skip+self.page_size)
+                # Live Graph does not echo the request URL back: in Nov 2026 every
+                # run rejected the archive's page-2 link because it did not start
+                # with the flow's own mailbox prefix. Hand out an equivalent link
+                # in another spelling, so the flow cannot depend on its shape.
+                _, _, mailbox, collection, key, tail = url.path.strip('/').split('/')
+                options = re.sub(r'&?\$skip=\d+', '', url.query) + '&$skip=' + str(skip+self.page_size)
+                options = options.lstrip('&').replace('$', '%24')
+                result['@odata.nextLink'] = (
+                    f"https://graph.microsoft.com/v1.0/users('{mailbox}')/{collection}('{key}')/{tail}?" + options)
                 if self.bad_next_link and path.endswith('/messages'):
-                    result['@odata.nextLink'] = 'https://other.example/steal'
+                    result['@odata.nextLink'] = self.bad_next_link.replace('{options}', options)
             return result
         if op == 'GetAttachment_V2':
             assert p['mailboxAddress'] == 'faktura@alcora.dk'
@@ -363,10 +371,26 @@ class SharedFlowTests(unittest.TestCase):
         self.assertEqual(rt.pdfs(), {})
 
     def test_pagination_url_cannot_leave_microsoft_mailbox(self):
-        rt = self.runtime(); rt.messages = [mail('a'), mail('b')]; rt.bad_next_link = True
+        rt = self.runtime(); rt.messages = [mail('a'), mail('b')]
+        rt.bad_next_link = 'https://other.example/steal'
         with self.assertRaises(ConnectorError):
             rt.run()
         self.assertEqual(rt.pdfs(), {})
+
+    def test_only_the_paging_options_of_a_next_link_are_used(self):
+        # Whatever address the link names, the next request stays in the mailbox.
+        rt = self.runtime(); rt.messages = [mail('a'), mail('b', payload=b'%PDF-two')]
+        rt.bad_next_link = 'https://other.example/steal?{options}'
+        rt.run()
+        self.assertEqual(sorted(rt.pdfs().values()), [b'%PDF-one', b'%PDF-two'])
+        uris = [p['Uri'] for op, p in rt.requests if op == 'HttpRequest']
+        self.assertTrue(all(u.startswith('https://graph.microsoft.com/v1.0/users/faktura%40alcora.dk/') for u in uris))
+
+    def test_many_mails_in_one_folder_are_all_read(self):
+        # The live failure: more mails in the archive than fit on one page.
+        mails = [mail(f'm{i}', 'archive', payload=b'%PDF-' + str(i).encode()) for i in range(5)]
+        rt = self.runtime(mails)
+        self.assertEqual(len(rt.pdfs()), 5)
 
     def test_binary_length_with_all_base64_padding_variants(self):
         for payload in (b'1234', b'12345', b'123456'):
