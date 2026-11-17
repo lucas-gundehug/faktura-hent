@@ -1,6 +1,6 @@
 # v5: delt postkasse, datomapper og dubletter
 
-Importfil: **Gem-nye-fakturaer-solution-v5.zip**, version **1.0.0.7**.
+Importfil: **Gem-nye-fakturaer-solution-v5.zip**, version **1.0.0.8**.
 
 Flowet tjekker `faktura@alcora.dk` hvert 15. minut. Det læser både Indbakke
 og mappen med det præcise navn `Arkiv_10_2024_>`. Arkivmappen kan ligge direkte
@@ -103,7 +103,9 @@ giver en fejl frem for en vellykket, ufuldstændig dubletkontrol.
 Flowet genlæser metadata for mails med vedhæftninger siden startdatoen; det
 henter kun vedhæftninger for endnu ikke behandlede mail-ID'er. Dubletkontrollen
 læser eksisterende PDF'er med samme byteantal som den nye PDF. Større mængder
-mail/filer kan derfor øge køretid og connectorforbrug. Hold øje med kørslerne.
+mail/filer kan derfor øge køretid og connectorforbrug. Siden 1.0.0.8 vokser antallet
+af trin i en kørsel ikke længere for hver mail eller hver fil, kun for hver side
+med op til 500 mails og for hver mappe. Hold øje med kørslerne.
 
 ## Lokal verifikation og genbygning
 

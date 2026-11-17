@@ -64,6 +64,21 @@ def append(name, value):
     return variable(name, value, 'AppendToArrayVariable')
 
 
+def keep(source, where):
+    return {'type': 'Query', 'inputs': {'from': source, 'where': where}, 'runAfter': {}}
+
+
+def add_all(name, compose_name, set_name, values):
+    """Append a whole array to an array variable in two actions, whatever its length.
+
+    A SetVariable cannot read its own variable, so the union goes through a
+    Compose. Each action counts toward Power Platform request limits, so whole
+    pages are handled at once instead of one loop round per item.
+    """
+    return {compose_name: compose("@union(variables('" + name + "'), " + values[1:] + ")"),
+            set_name: variable(name, "@outputs('" + compose_name + "')")}
+
+
 def state_document():
     return compose({'schemaVersion': 1, 'startUtc': "@variables('Start_utc')",
                     'processed': "@variables('Processed_messages')"})
@@ -104,11 +119,12 @@ def definition():
 
     # The destination is listed directly (no search-index lag). Recovering after
     # a PDF upload succeeds but state persistence fails rebuilds this same index.
-    list_files = drive('ListFolderV2', id="@variables('Folders_to_scan')[variables('Folder_index')]")
+    # Folders_to_scan holds folder metadata objects; the listing needs their Id.
+    list_files = drive('ListFolderV2', id="@variables('Folders_to_scan')[variables('Folder_index')]?['Id']")
     list_files['runtimeConfiguration'] = {'paginationPolicy': {'minimumItemCount': 5000}}
     index_files = sequence(
         Get_destination_metadata=drive('GetFileMetadataByPath', path="@outputs('OneDrive_folder')"),
-        Add_destination_to_queue=append('Folders_to_scan', "@body('Get_destination_metadata')?['Id']"),
+        Add_destination_to_queue=append('Folders_to_scan', "@body('Get_destination_metadata')"),
         Walk_destination_folders=until(
             "@greaterOrEquals(variables('Folder_index'), length(variables('Folders_to_scan')))",
             sequence(
@@ -116,12 +132,12 @@ def definition():
                 Require_complete_file_listing=condition(
                     "@or(not(empty(body('List_destination_children')?['nextLink'])), greaterOrEquals(length(body('List_destination_children')?['value']), 5000))",
                     {'Stop_incomplete_file_listing': variable('Fatal_error', True)}),
-                Index_each_child=foreach("@body('List_destination_children')?['value']", {
-                    'Folder_or_PDF': condition("@equals(items('Index_each_child')?['IsFolder'], true)",
-                        {'Queue_subfolder': append('Folders_to_scan', "@items('Index_each_child')?['Id']")},
-                        {'Index_PDF_only': condition("@endsWith(toLower(coalesce(items('Index_each_child')?['Name'], '')), '.pdf')",
-                            {'Add_existing_PDF': append('Existing_PDFs', "@items('Index_each_child')")})}),
-                }),
+                Subfolders_in_folder=keep("@body('List_destination_children')?['value']",
+                                          "@equals(item()?['IsFolder'], true)"),
+                PDFs_in_folder=keep("@body('List_destination_children')?['value']",
+                    "@and(not(equals(item()?['IsFolder'], true)), endsWith(toLower(coalesce(item()?['Name'], '')), '.pdf'))"),
+                **add_all('Folders_to_scan', 'Folders_plus_subfolders', 'Queue_subfolders', "@body('Subfolders_in_folder')"),
+                **add_all('Existing_PDFs', 'Index_plus_PDFs_in_folder', 'Index_existing_PDFs', "@body('PDFs_in_folder')"),
                 Advance_folder_index=variable('Folder_index', 1, 'IncrementVariable'),
             )),
     )
@@ -236,13 +252,12 @@ def definition():
         Monitored_folders=compose("@createArray('inbox', first(outputs('Archive_matches'))?['id'])"),
         For_each_mail_folder=foreach("@outputs('Monitored_folders')", sequence(
             Set_message_page_URL=variable('Message_page_URL',
-                "@concat(" + message_page[1:] + ", '?$filter=', encodeUriComponent(concat('receivedDateTime ge ', variables('Start_utc'), ' and hasAttachments eq true')), '&$orderby=receivedDateTime asc&$select=id,subject,receivedDateTime,hasAttachments&$top=100')"),
+                "@concat(" + message_page[1:] + ", '?$filter=', encodeUriComponent(concat('receivedDateTime ge ', variables('Start_utc'), ' and hasAttachments eq true')), '&$orderby=receivedDateTime asc&$select=id,subject,receivedDateTime,hasAttachments&$top=500')"),
             Read_all_message_pages=until("@empty(variables('Message_page_URL'))", {
                 'Validate_message_page_URL': checked_http('Get_message_page', "@variables('Message_page_URL')", {
-                    'Collect_each_mail': foreach("@body('Get_message_page')?['value']", {
-                        'Collect_unseen_mail': condition("@not(contains(variables('Processed_messages'), items('Collect_each_mail')?['id']))",
-                            {'Queue_unseen_mail': append('Pending_mails', "@items('Collect_each_mail')")}),
-                    }),
+                    'Unseen_mails_on_page': keep("@body('Get_message_page')?['value']",
+                        "@not(contains(variables('Processed_messages'), item()?['id']))"),
+                    **add_all('Pending_mails', 'Pending_plus_unseen_mails', 'Queue_unseen_mails', "@body('Unseen_mails_on_page')"),
                     'Next_message_page': variable('Message_page_URL', next_page('Get_message_page', message_page)),
                 }),
             }),

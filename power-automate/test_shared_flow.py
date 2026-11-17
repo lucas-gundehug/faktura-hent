@@ -37,6 +37,7 @@ class LocalRuntime:
         self.incomplete_file_listing = False
         self.bad_next_link = None
         self.requests = []
+        self.action_count = 0  # Every executed action, containers included.
 
     def expr(self, value):
         if isinstance(value, dict):
@@ -120,6 +121,7 @@ class LocalRuntime:
             raise ConnectorError(500)
 
     def action(self, name, action):
+        self.action_count += 1
         typ = action['type']
         if typ == 'Compose':
             self.results[name] = self.expr(action['inputs'])
@@ -247,6 +249,7 @@ class LocalRuntime:
 
     def run(self):
         self.variables, self.results, self.items = {}, {}, {}
+        self.action_count = 0
         self.actions(self.definition['actions'])
 
     def pdfs(self):
@@ -260,8 +263,9 @@ def mail(id, folder='inbox', date='2026-10-07T22:30:00Z', name='inco invoice.pdf
 
 
 class SharedFlowTests(unittest.TestCase):
-    def runtime(self, messages=None):
+    def runtime(self, messages=None, page_size=1):
         runtime = LocalRuntime()
+        runtime.page_size = page_size
         trigger, = runtime.definition['triggers'].values()
         self.assertEqual(trigger['type'], 'Recurrence', 'Both folders require the new scheduled shared-mailbox flow')
         runtime.run()  # First activation stores the future-only boundary.
@@ -402,6 +406,45 @@ class SharedFlowTests(unittest.TestCase):
         rt = self.runtime(); rt.files['/Fakturaer/inco_old_uuid.pdf'] = b'%PDF-one'
         rt.messages = [mail('a')]; rt.run()
         self.assertEqual(rt.pdfs(), {'/Fakturaer/inco_old_uuid.pdf': b'%PDF-one'})
+
+    def idle_run_actions(self, processed):
+        mails = [mail(f'm{i}', ('inbox', 'archive')[i % 2], payload=b'%PDF-' + str(i).encode())
+                 for i in range(processed)]
+        rt = self.runtime(mails, page_size=1000)
+        self.assertEqual(len(rt.pdfs()), processed)
+        rt.run()
+        return rt.action_count
+
+    def test_idle_run_cost_does_not_grow_with_processed_mails(self):
+        # Live runs every 15 minutes re-list every attachment mail since the
+        # start time; per-mail steps made each idle run cost ~1,000 actions.
+        self.assertEqual(self.idle_run_actions(40), self.idle_run_actions(3))
+
+    def new_mail_run_actions(self, existing_pdfs):
+        rt = self.runtime(page_size=1000)
+        for i in range(existing_pdfs):
+            rt.files[f'/Fakturaer/2026-10-01/old-{i:03d}.pdf'] = b'%PDF-existing-' + str(i).encode().zfill(3)
+        rt.messages = [mail('new')]
+        rt.run()
+        self.assertEqual(len(rt.pdfs()), existing_pdfs + 1)
+        return rt.action_count
+
+    def test_file_index_cost_does_not_grow_with_existing_pdfs(self):
+        self.assertEqual(self.new_mail_run_actions(40), self.new_mail_run_actions(3))
+
+    def test_mails_are_processed_inbox_first_then_archive_by_received_time(self):
+        rt = self.runtime([mail('a2', 'archive', '2026-10-09T09:00:00Z', payload=b'%PDF-a2'),
+                           mail('i2', 'inbox', '2026-10-09T08:00:00Z', payload=b'%PDF-i2'),
+                           mail('a1', 'archive', '2026-10-08T09:00:00Z', payload=b'%PDF-a1'),
+                           mail('i1', 'inbox', '2026-10-08T10:00:00Z', payload=b'%PDF-i1')], page_size=1000)
+        order = [p['messageId'] for op, p in rt.requests if op == 'GetAttachment_V2']
+        self.assertEqual(order, ['i1', 'i2', 'a1', 'a2'])
+
+    def test_message_listing_asks_for_pages_of_500(self):
+        rt = self.runtime([mail('a')])
+        uris = [p['Uri'] for op, p in rt.requests if op == 'HttpRequest' and '/messages?' in p['Uri']]
+        self.assertTrue(uris)
+        self.assertTrue(all('$top=500' in u for u in uris if '/attachments' not in u), uris)
 
     def test_winter_date_uses_danish_received_time(self):
         rt = self.runtime([mail('a', date='2027-01-10T23:30:00Z')])

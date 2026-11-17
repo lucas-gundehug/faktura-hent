@@ -529,7 +529,7 @@
               "type": "SetVariable",
               "inputs": {
                 "name": "Message_page_URL",
-                "value": "@concat(concat(outputs('Mailbox_base'), 'mailFolders/', encodeUriComponent(items('For_each_mail_folder')), '/messages'), '?$filter=', encodeUriComponent(concat('receivedDateTime ge ', variables('Start_utc'), ' and hasAttachments eq true')), '&$orderby=receivedDateTime asc&$select=id,subject,receivedDateTime,hasAttachments&$top=100')"
+                "value": "@concat(concat(outputs('Mailbox_base'), 'mailFolders/', encodeUriComponent(items('For_each_mail_folder')), '/messages'), '?$filter=', encodeUriComponent(concat('receivedDateTime ge ', variables('Start_utc'), ' and hasAttachments eq true')), '&$orderby=receivedDateTime asc&$select=id,subject,receivedDateTime,hasAttachments&$top=500')"
               },
               "runAfter": {}
             },
@@ -561,38 +561,37 @@
                           },
                           "runAfter": {}
                         },
-                        "Collect_each_mail": {
-                          "type": "Foreach",
-                          "foreach": "@body('Get_message_page')?['value']",
-                          "actions": {
-                            "Collect_unseen_mail": {
-                              "type": "If",
-                              "expression": "@not(contains(variables('Processed_messages'), items('Collect_each_mail')?['id']))",
-                              "actions": {
-                                "Queue_unseen_mail": {
-                                  "type": "AppendToArrayVariable",
-                                  "inputs": {
-                                    "name": "Pending_mails",
-                                    "value": "@items('Collect_each_mail')"
-                                  },
-                                  "runAfter": {}
-                                }
-                              },
-                              "else": {
-                                "actions": {}
-                              },
-                              "runAfter": {}
-                            }
+                        "Unseen_mails_on_page": {
+                          "type": "Query",
+                          "inputs": {
+                            "from": "@body('Get_message_page')?['value']",
+                            "where": "@not(contains(variables('Processed_messages'), item()?['id']))"
                           },
                           "runAfter": {
                             "Get_message_page": [
                               "Succeeded"
                             ]
+                          }
+                        },
+                        "Pending_plus_unseen_mails": {
+                          "type": "Compose",
+                          "inputs": "@union(variables('Pending_mails'), body('Unseen_mails_on_page'))",
+                          "runAfter": {
+                            "Unseen_mails_on_page": [
+                              "Succeeded"
+                            ]
+                          }
+                        },
+                        "Queue_unseen_mails": {
+                          "type": "SetVariable",
+                          "inputs": {
+                            "name": "Pending_mails",
+                            "value": "@outputs('Pending_plus_unseen_mails')"
                           },
-                          "runtimeConfiguration": {
-                            "concurrency": {
-                              "repetitions": 1
-                            }
+                          "runAfter": {
+                            "Pending_plus_unseen_mails": [
+                              "Succeeded"
+                            ]
                           }
                         },
                         "Next_message_page": {
@@ -602,7 +601,7 @@
                             "value": "@if(empty(coalesce(body('Get_message_page')?['@odata.nextLink'], '')), '', if(contains(coalesce(body('Get_message_page')?['@odata.nextLink'], ''), '?'), concat(concat(outputs('Mailbox_base'), 'mailFolders/', encodeUriComponent(items('For_each_mail_folder')), '/messages'), '?', replace(last(split(coalesce(body('Get_message_page')?['@odata.nextLink'], ''), '?')), '%24', '$')), coalesce(body('Get_message_page')?['@odata.nextLink'], '')))"
                           },
                           "runAfter": {
-                            "Collect_each_mail": [
+                            "Queue_unseen_mails": [
                               "Succeeded"
                             ]
                           }
@@ -710,7 +709,7 @@
               "type": "AppendToArrayVariable",
               "inputs": {
                 "name": "Folders_to_scan",
-                "value": "@body('Get_destination_metadata')?['Id']"
+                "value": "@body('Get_destination_metadata')"
               },
               "runAfter": {
                 "Get_destination_metadata": [
@@ -734,7 +733,7 @@
                           "operationId": "ListFolderV2"
                         },
                         "parameters": {
-                          "id": "@variables('Folders_to_scan')[variables('Folder_index')]"
+                          "id": "@variables('Folders_to_scan')[variables('Folder_index')]?['Id']"
                         },
                         "authentication": "@parameters('$authentication')"
                       },
@@ -767,57 +766,70 @@
                         ]
                       }
                     },
-                    "Index_each_child": {
-                      "type": "Foreach",
-                      "foreach": "@body('List_destination_children')?['value']",
-                      "actions": {
-                        "Folder_or_PDF": {
-                          "type": "If",
-                          "expression": "@equals(items('Index_each_child')?['IsFolder'], true)",
-                          "actions": {
-                            "Queue_subfolder": {
-                              "type": "AppendToArrayVariable",
-                              "inputs": {
-                                "name": "Folders_to_scan",
-                                "value": "@items('Index_each_child')?['Id']"
-                              },
-                              "runAfter": {}
-                            }
-                          },
-                          "else": {
-                            "actions": {
-                              "Index_PDF_only": {
-                                "type": "If",
-                                "expression": "@endsWith(toLower(coalesce(items('Index_each_child')?['Name'], '')), '.pdf')",
-                                "actions": {
-                                  "Add_existing_PDF": {
-                                    "type": "AppendToArrayVariable",
-                                    "inputs": {
-                                      "name": "Existing_PDFs",
-                                      "value": "@items('Index_each_child')"
-                                    },
-                                    "runAfter": {}
-                                  }
-                                },
-                                "else": {
-                                  "actions": {}
-                                },
-                                "runAfter": {}
-                              }
-                            }
-                          },
-                          "runAfter": {}
-                        }
+                    "Subfolders_in_folder": {
+                      "type": "Query",
+                      "inputs": {
+                        "from": "@body('List_destination_children')?['value']",
+                        "where": "@equals(item()?['IsFolder'], true)"
                       },
                       "runAfter": {
                         "Require_complete_file_listing": [
                           "Succeeded"
                         ]
+                      }
+                    },
+                    "PDFs_in_folder": {
+                      "type": "Query",
+                      "inputs": {
+                        "from": "@body('List_destination_children')?['value']",
+                        "where": "@and(not(equals(item()?['IsFolder'], true)), endsWith(toLower(coalesce(item()?['Name'], '')), '.pdf'))"
                       },
-                      "runtimeConfiguration": {
-                        "concurrency": {
-                          "repetitions": 1
-                        }
+                      "runAfter": {
+                        "Subfolders_in_folder": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
+                    "Folders_plus_subfolders": {
+                      "type": "Compose",
+                      "inputs": "@union(variables('Folders_to_scan'), body('Subfolders_in_folder'))",
+                      "runAfter": {
+                        "PDFs_in_folder": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
+                    "Queue_subfolders": {
+                      "type": "SetVariable",
+                      "inputs": {
+                        "name": "Folders_to_scan",
+                        "value": "@outputs('Folders_plus_subfolders')"
+                      },
+                      "runAfter": {
+                        "Folders_plus_subfolders": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
+                    "Index_plus_PDFs_in_folder": {
+                      "type": "Compose",
+                      "inputs": "@union(variables('Existing_PDFs'), body('PDFs_in_folder'))",
+                      "runAfter": {
+                        "Queue_subfolders": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
+                    "Index_existing_PDFs": {
+                      "type": "SetVariable",
+                      "inputs": {
+                        "name": "Existing_PDFs",
+                        "value": "@outputs('Index_plus_PDFs_in_folder')"
+                      },
+                      "runAfter": {
+                        "Index_plus_PDFs_in_folder": [
+                          "Succeeded"
+                        ]
                       }
                     },
                     "Advance_folder_index": {
@@ -827,7 +839,7 @@
                         "value": 1
                       },
                       "runAfter": {
-                        "Index_each_child": [
+                        "Index_existing_PDFs": [
                           "Succeeded"
                         ]
                       }
