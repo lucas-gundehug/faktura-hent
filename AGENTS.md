@@ -8,9 +8,11 @@ Power Automate cloud flow that saves invoice PDFs from the shared mailbox
 ## Facts
 - Monitored folders: Inbox and the archive folder named exactly `Arkiv_10_2024_>`.
 - `faktura@alcora.dk` is a licensed account with its own login (MFA via Authenticator),
-  not only a shared mailbox. The live flow's OneDrive connection is signed in as it, so
-  the PDFs land in faktura@alcora.dk's own OneDrive and are shared from there to
-  colleagues (e.g. cl@alcora.dk).
+  not only a shared mailbox.
+- The PDFs belong in Camilla's (cl@alcora.dk) OneDrive, folder `/Fakturaer` (Lucas,
+  17 Nov 2026). That is where the flow saved until 6 Nov 2026. An earlier note here said
+  faktura@alcora.dk's own OneDrive; that described the solution's connection reference,
+  not where the working flow saved.
 - Suppliers often name attachments after the due date, not the invoice number
   (e.g. `inco Aarhus A_S_29.12.2026.pdf`, `Royal Unibrew A_S_30.11.2026.pdf`), so
   different invoices share filenames. The flow keeps original names and adds a
@@ -31,15 +33,16 @@ Power Automate cloud flow that saves invoice PDFs from the shared mailbox
 
 - Importing a solution update puts the flow's OneDrive steps back on the solution's own
   connection reference `fkh_faktura_onedrive`. In the org environment that reference is
-  bound to another account's OneDrive, not faktura@alcora.dk's (the account name is not
-  visible from Lucas's login; the flow's primary owner is Camilla, cl@alcora.dk). After
-  the 1.0.0.7 import on 12 Nov 2026 every run said "Succeeded" and saved the PDFs into
-  that other OneDrive's `/Fakturaer`, so faktura@'s folder stopped at `2026-11-06`
-  (noticed 17 Nov). After every import: open a OneDrive step (e.g. `Read saved state`)
-  and make sure its connection is signed in as faktura@alcora.dk before trusting the runs.
-  Quick check in any run, step `Load start time`: `2026-10-28T13:38:35Z` is faktura@'s
-  OneDrive, `2026-10-28T13:11:46Z` is the other one (each OneDrive has its own
-  `_automation-state.json`).
+  bound to another account's OneDrive than cl@alcora.dk's (the account name is not
+  visible from Lucas's login and it is not Lucas's; probably faktura@alcora.dk's own,
+  not confirmed). After the 1.0.0.7 import on 12 Nov 2026 every run said "Succeeded" and
+  saved the PDFs into that other OneDrive's `/Fakturaer`, so cl@'s folder stopped at
+  `2026-11-06` (noticed 17 Nov). After every import: open a OneDrive step (e.g.
+  `Read saved state`) and make sure its connection is signed in as cl@alcora.dk before
+  trusting the runs. Only Camilla can pick her connection; Lucas's login is offered his
+  own OneDrive connections only. Quick check in any run, step `Load start time`:
+  `2026-10-28T13:38:35Z` is the right OneDrive (cl@'s), `2026-10-28T13:11:46Z` is the
+  other one (each OneDrive has its own `_automation-state.json`).
 - "Succeeded" runs prove nothing about where the PDFs went. To see it, open a run that
   handled a mail and read the `Create file in OneDrive` output (`Path`), or compare the
   start time as above.

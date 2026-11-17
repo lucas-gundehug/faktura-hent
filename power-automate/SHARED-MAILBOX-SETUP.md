@@ -49,9 +49,10 @@ De eksisterende Royal Unibrew-, inco-, Kreditnota_- og nummererede
    **OneDrive folder**. Arkivnavnet slutter bogstaveligt med `_>` i pakken.
    **Ved hver import, også opdateringer:** importen sætter OneDrive-trinnene tilbage
    til solutionens egen forbindelsesreference. Åbn et OneDrive-trin (fx **Read saved
-   state**), og kontroller, at forbindelsen er logget ind som `faktura@alcora.dk`.
-   Ellers gemmes PDF'erne i en anden kontos OneDrive, mens kørslerne stadig står som
-   vellykkede. Det skete efter opdateringen 12. november 2026 og blev først opdaget
+   state**), og kontroller, at forbindelsen er logget ind som den konto, hvis OneDrive
+   fakturaerne skal ligge i (hos Alcora: `cl@alcora.dk`). Det skal gøres af den konto
+   selv. Ellers gemmes PDF'erne i en anden kontos OneDrive, mens kørslerne stadig står
+   som vellykkede. Det skete efter opdateringen 12. november 2026 og blev først opdaget
    17. november.
 6. Gem flowet, ret eventuelle valideringsfejl, og slå det til. Det er en selvstændig
    solution og ændrer ikke den ældre **Invoice PDF automation**. Slå et ældre
