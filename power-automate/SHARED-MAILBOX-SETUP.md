@@ -1,6 +1,6 @@
 # v5: delt postkasse, datomapper og dubletter
 
-Importfil: **Gem-nye-fakturaer-solution-v5.zip**, version **1.0.0.7**.
+Importfil: **Gem-nye-fakturaer-solution-v5.zip**, version **1.0.0.8**.
 
 Flowet tjekker `faktura@alcora.dk` hvert 15. minut. Det læser både Indbakke
 og mappen med det præcise navn `Arkiv_10_2024_>`. Arkivmappen kan ligge direkte
@@ -47,6 +47,18 @@ De eksisterende Royal Unibrew-, inco-, Kreditnota_- og nummererede
 5. Åbn **Faktura-hent (shared mailbox) > Gem fakturaer fra faktura@alcora.dk**. Kontroller
    forbindelserne og trinnene **Shared mailbox**, **Archive folder name** og
    **OneDrive folder**. Arkivnavnet slutter bogstaveligt med `_>` i pakken.
+   **Ved hver import, også opdateringer:** importen sætter OneDrive-trinnene tilbage
+   til solutionens egen forbindelsesreference. Alle otte OneDrive-trin skal bruge en
+   forbindelse, der er logget ind som den konto, hvis OneDrive fakturaerne skal ligge i
+   (hos Alcora: `cl@alcora.dk`), og det skal gøres af den konto selv. Enten rettes
+   solutionens forbindelsesreference **OneDrive for Business** (`fkh_faktura_onedrive`)
+   under **Solutions > Faktura-hent (shared mailbox) > Connection references**, eller
+   også skiftes forbindelsen på hvert trin: **Read saved state**, **Create state file**,
+   **Get state metadata**, **Get destination metadata**, **List destination children**,
+   **Read existing PDF**, **Create file in OneDrive** og **Persist processed mail**.
+   Skiftes kun nogle af trinnene, gemmes ingenting, mens kørslerne stadig står som
+   vellykkede. Peger de alle på en forkert konto, havner PDF'erne i dens OneDrive.
+   Begge dele skete i november 2026.
 6. Gem flowet, ret eventuelle valideringsfejl, og slå det til. Det er en selvstændig
    solution og ændrer ikke den ældre **Invoice PDF automation**. Slå et ældre
    fakturaflow fra, hvis det gemmer de samme fakturaer, så de ikke gemmes to gange.
@@ -91,7 +103,9 @@ giver en fejl frem for en vellykket, ufuldstændig dubletkontrol.
 Flowet genlæser metadata for mails med vedhæftninger siden startdatoen; det
 henter kun vedhæftninger for endnu ikke behandlede mail-ID'er. Dubletkontrollen
 læser eksisterende PDF'er med samme byteantal som den nye PDF. Større mængder
-mail/filer kan derfor øge køretid og connectorforbrug. Hold øje med kørslerne.
+mail/filer kan derfor øge køretid og connectorforbrug. Siden 1.0.0.8 vokser antallet
+af trin i en kørsel ikke længere for hver mail eller hver fil, kun for hver side
+med op til 500 mails og for hver mappe. Hold øje med kørslerne.
 
 ## Lokal verifikation og genbygning
 
