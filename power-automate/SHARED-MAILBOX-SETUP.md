@@ -47,6 +47,12 @@ De eksisterende Royal Unibrew-, inco-, Kreditnota_- og nummererede
 5. Åbn **Faktura-hent (shared mailbox) > Gem fakturaer fra faktura@alcora.dk**. Kontroller
    forbindelserne og trinnene **Shared mailbox**, **Archive folder name** og
    **OneDrive folder**. Arkivnavnet slutter bogstaveligt med `_>` i pakken.
+   **Ved hver import, også opdateringer:** importen sætter OneDrive-trinnene tilbage
+   til solutionens egen forbindelsesreference. Åbn et OneDrive-trin (fx **Read saved
+   state**), og kontroller, at forbindelsen er logget ind som `faktura@alcora.dk`.
+   Ellers gemmes PDF'erne i en anden kontos OneDrive, mens kørslerne stadig står som
+   vellykkede. Det skete efter opdateringen 12. november 2026 og blev først opdaget
+   17. november.
 6. Gem flowet, ret eventuelle valideringsfejl, og slå det til. Det er en selvstændig
    solution og ændrer ikke den ældre **Invoice PDF automation**. Slå et ældre
    fakturaflow fra, hvis det gemmer de samme fakturaer, så de ikke gemmes to gange.
