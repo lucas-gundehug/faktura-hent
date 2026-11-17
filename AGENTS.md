@@ -70,7 +70,14 @@ Power Automate cloud flow that saves invoice PDFs from the shared mailbox
   per-mail loop (`Collect_each_mail`) and the per-file loop (`Index_each_child`) with
   whole-page Filter array + Compose + Set variable steps, so a run's action count grows
   only per page of 500 mails and per folder (tests count actions in `LocalRuntime`).
-  1.0.0.8 is not yet imported or verified live.
+  1.0.0.8 was imported on 17 Nov 2026 (signed in as cl@, flow turned off first). The
+  import warned that labels for language 1033 could not be imported and that flows may
+  not have turned on; both are harmless. As predicted it put OneDrive back on faktura@,
+  so all eight steps were switched to cl@ again before turning the flow on. The first
+  run took 12 seconds instead of 2-4 minutes, `Get state metadata` showed
+  `LastModifiedBy: Camilla Hansen`, and `Unseen mails on page` received the inbox's 13
+  mails and returned none (all handled). Not yet seen on 1.0.0.8: a run that saves a new
+  PDF, a mail folder with more than one page, and whether the hours-long hangs are gone.
 
 - The v5 package has its own solution identity (`FakturaHentSharedMailbox`, publisher
   `FakturaHent`, prefix `fkh`, own workflow ID and connection references). The older
