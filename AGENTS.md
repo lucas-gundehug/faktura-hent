@@ -33,19 +33,24 @@ Power Automate cloud flow that saves invoice PDFs from the shared mailbox
 
 - Importing a solution update puts the flow's OneDrive steps back on the solution's own
   connection reference `fkh_faktura_onedrive`. In the org environment that reference is
-  bound to another account's OneDrive than cl@alcora.dk's (the account name is not
-  visible from Lucas's login and it is not Lucas's; probably faktura@alcora.dk's own,
-  not confirmed). After the 1.0.0.7 import on 12 Nov 2026 every run said "Succeeded" and
-  saved the PDFs into that other OneDrive's `/Fakturaer`, so cl@'s folder stopped at
-  `2026-11-06` (noticed 17 Nov). After every import: open a OneDrive step (e.g.
-  `Read saved state`) and make sure its connection is signed in as cl@alcora.dk before
-  trusting the runs. Only Camilla can pick her connection; Lucas's login is offered his
-  own OneDrive connections only. Quick check in any run, step `Load start time`:
-  `2026-10-28T13:38:35Z` is the right OneDrive (cl@'s), `2026-10-28T13:11:46Z` is the
-  other one (each OneDrive has its own `_automation-state.json`).
-- "Succeeded" runs prove nothing about where the PDFs went. To see it, open a run that
-  handled a mail and read the `Create file in OneDrive` output (`Path`), or compare the
-  start time as above.
+  bound to faktura@alcora.dk's own OneDrive, not cl@alcora.dk's. After the 1.0.0.7 import
+  on 12 Nov 2026 every run said "Succeeded" and saved the PDFs into faktura@'s
+  `/Fakturaer`, so cl@'s folder stopped at `2026-11-06` (noticed 17 Nov). After every
+  import the OneDrive steps must be put back on a connection signed in as cl@alcora.dk.
+  Only Camilla's login can pick her connection; Lucas's login is offered his own
+  OneDrive connections only.
+- "Change connection reference" in the designer changes that one step only. The flow has
+  eight OneDrive steps: `Read saved state`, `Create state file`, `Get state metadata`,
+  `Get destination metadata`, `List destination children`, `Read existing PDF`,
+  `Create file in OneDrive`, `Persist processed mail`. On 17 Nov only `Read saved state`
+  was switched: the run read cl@'s bookkeeping, compared against faktura@'s files, found
+  every PDF "already saved", wrote nothing and still ended "Succeeded" (201 mails). It
+  also overwrote the bookkeeping file in faktura@'s OneDrive with cl@'s start time, so
+  the start time no longer tells the two OneDrives apart.
+- To see which OneDrive a step used, open it in a run and read `LastModifiedBy` in its
+  output: `Studenterbolaget - Faktura` is faktura@'s OneDrive. Check `Get state metadata`
+  and a `Create file in OneDrive` that actually ran.
+- "Succeeded" runs prove nothing about where the PDFs went, or that any were saved.
 - Seen 16-17 Nov 2026: about three runs a day fail after 2-6.5 hours with
   `Read_all_message_pages` "until action is terminated ... Number of actual iterations: 1",
   so one step inside the first mailbox page hangs for hours (the loop's 1 hour timeout is

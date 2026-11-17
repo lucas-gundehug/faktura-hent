@@ -48,12 +48,17 @@ De eksisterende Royal Unibrew-, inco-, Kreditnota_- og nummererede
    forbindelserne og trinnene **Shared mailbox**, **Archive folder name** og
    **OneDrive folder**. Arkivnavnet slutter bogstaveligt med `_>` i pakken.
    **Ved hver import, også opdateringer:** importen sætter OneDrive-trinnene tilbage
-   til solutionens egen forbindelsesreference. Åbn et OneDrive-trin (fx **Read saved
-   state**), og kontroller, at forbindelsen er logget ind som den konto, hvis OneDrive
-   fakturaerne skal ligge i (hos Alcora: `cl@alcora.dk`). Det skal gøres af den konto
-   selv. Ellers gemmes PDF'erne i en anden kontos OneDrive, mens kørslerne stadig står
-   som vellykkede. Det skete efter opdateringen 12. november 2026 og blev først opdaget
-   17. november.
+   til solutionens egen forbindelsesreference. Alle otte OneDrive-trin skal bruge en
+   forbindelse, der er logget ind som den konto, hvis OneDrive fakturaerne skal ligge i
+   (hos Alcora: `cl@alcora.dk`), og det skal gøres af den konto selv. Enten rettes
+   solutionens forbindelsesreference **OneDrive for Business** (`fkh_faktura_onedrive`)
+   under **Solutions > Faktura-hent (shared mailbox) > Connection references**, eller
+   også skiftes forbindelsen på hvert trin: **Read saved state**, **Create state file**,
+   **Get state metadata**, **Get destination metadata**, **List destination children**,
+   **Read existing PDF**, **Create file in OneDrive** og **Persist processed mail**.
+   Skiftes kun nogle af trinnene, gemmes ingenting, mens kørslerne stadig står som
+   vellykkede. Peger de alle på en forkert konto, havner PDF'erne i dens OneDrive.
+   Begge dele skete i november 2026.
 6. Gem flowet, ret eventuelle valideringsfejl, og slå det til. Det er en selvstændig
    solution og ændrer ikke den ældre **Invoice PDF automation**. Slå et ældre
    fakturaflow fra, hvis det gemmer de samme fakturaer, så de ikke gemmes to gange.
